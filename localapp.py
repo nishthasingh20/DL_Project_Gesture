@@ -8,6 +8,11 @@ import operator
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 
+import speech_recognition as sr
+import threading
+
+import whisper
+
 loaded_model = Sequential([
     Conv2D(32, (3,3), activation='relu', input_shape=(120,120,1)),
     MaxPooling2D(2,2),
@@ -22,6 +27,8 @@ loaded_model = Sequential([
 
 loaded_model.load_weights("gesture-model.h5")
 
+model = whisper.load_model("tiny")  # use "small" if laptop is good
+
 categories = {
     0: 'palm',
     1: 'fist',
@@ -32,13 +39,70 @@ categories = {
     6: 'no-gesture'
 }
 
+recognizer = sr.Recognizer()
+notes_text = ""
+recording = False
+
+import sounddevice as sd
+import numpy as np
+import scipy.io.wavfile as wav
+import tempfile
+import os
+
+import sounddevice as sd
+import numpy as np
+import scipy.io.wavfile as wav
+import os
+import time
+
+def record_with_whisper():
+    global notes_text, recording
+
+    samplerate = 48000
+    device_id = 1  # Stereo Mix (MME)
+
+    while recording:
+        try:
+            # Record 5 seconds system audio
+            audio_data = sd.rec(
+                int(5 * samplerate),
+                samplerate=samplerate,
+                channels=1,
+                device=device_id
+            )
+            sd.wait()
+
+            # Convert to float32 (Whisper expects this)
+            audio_data = audio_data.flatten().astype(np.float32)
+
+            # Normalize audio
+            audio_data = audio_data / np.max(np.abs(audio_data) + 1e-6)
+
+            # 🔥 Directly pass audio (NO FILE)
+            result = model.transcribe(audio_data, fp16=False)
+
+            text = result["text"]
+
+            if text.strip():
+                print("Detected:", text)
+                notes_text += text + "\n"
+
+                with open("notes.txt", "a") as f:
+                    f.write(text + "\n")
+
+        except Exception as e:
+            print("ERROR:", e)
+
+#import sounddevice as sd
+#print(sd.query_devices())
+
 def main():
     st.markdown(
         "<h1 style='text-align:center;'>Hand Gesture Recognition Web App</h1>",
         unsafe_allow_html=True
     )
 
-    pages = ['About Web App','Project Demo','Gesture Control Page']
+    pages = ['About Web App','Project Demo','Gesture Control Page', 'Notes Taking']
     page = st.sidebar.selectbox('', pages)
 
     if page == 'About Web App':
@@ -127,6 +191,29 @@ def main():
 
         camera.release()
         cv2.destroyAllWindows()
+    
+    elif page == 'Notes Taking':
+        global recording, notes_text
+        st.subheader("🎤 Speech-to-Text Notes")
+
+        col1, col2 = st.columns(2)
+
+        if col1.button("Start Recording"):
+            recording = True
+            notes_text = ""
+            open("notes.txt", "w").close()
+
+            thread = threading.Thread(target=record_with_whisper)
+            thread.start()
+
+        if col2.button("Stop Recording"):
+            recording = False
+
+        st.text_area("Live Notes", notes_text, height=300)
+
+        if st.button("Clear Notes"):
+            notes_text = ""
+            open("notes.txt", "w").close()
 
 if __name__ == "__main__":
     main()
