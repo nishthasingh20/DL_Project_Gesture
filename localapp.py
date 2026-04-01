@@ -13,6 +13,102 @@ import threading
 
 import whisper
 
+# -------- SESSION STATE SAFE INIT --------
+if "recording" not in st.session_state:
+    st.session_state["recording"] = False
+
+if "notes_text" not in st.session_state:
+    st.session_state["notes_text"] = ""
+
+if "summary" not in st.session_state:
+    st.session_state["summary"] = ""
+
+st.set_page_config(
+    page_title="Gesture controlled lecture notes taking system using deep learning",
+    page_icon="🖐️",
+    layout="wide"
+)
+
+st.markdown("""
+<style>
+
+/* ---------- GLOBAL ---------- */
+body {
+    background-color: #0e1117;
+}
+
+.block-container {
+    padding-top: 1.5rem;
+}
+
+/* ---------- HEADERS ---------- */
+.main-header {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.sub-header {
+    text-align: center;
+    color: gray;
+    margin-bottom: 30px;
+}
+
+/* ---------- CARDS ---------- */
+.card {
+    background: #161b22;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.3);
+}
+
+/* ---------- GRADIENT HEADERS ---------- */
+.gradient-purple {
+    background: linear-gradient(90deg, #7b2ff7, #f107a3);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.gradient-red {
+    background: linear-gradient(90deg, #ff416c, #ff4b2b);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* ---------- BUTTONS ---------- */
+.stButton>button {
+    width: 100%;
+    border-radius: 10px;
+    height: 3em;
+    font-weight: 600;
+}
+
+/* ---------- BADGES ---------- */
+.badge {
+    background: #1f6feb;
+    padding: 6px 12px;
+    border-radius: 8px;
+    margin: 4px;
+    display: inline-block;
+}
+
+/* ---------- FEATURE GRID ---------- */
+.feature-box {
+    background: #161b22;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 loaded_model = Sequential([
     Conv2D(32, (3,3), activation='relu', input_shape=(120,120,1)),
     MaxPooling2D(2,2),
@@ -102,21 +198,85 @@ def main():
         unsafe_allow_html=True
     )
 
-    pages = ['About Web App','Project Demo','Gesture Control Page', 'Notes Taking']
+    pages = [
+    '📘 About Web App',
+    #'🎬 Project Demo',
+    '🖐️ Gesture Control',
+    '📝 Notes Taking'
+    ]
     page = st.sidebar.selectbox('', pages)
 
-    if page == 'About Web App':
-        st.write("Control media player using hand gestures.")
+    if page == '📘 About Web App':
 
-    elif page == 'Project Demo':
-        st.video("demo.mp4")
+        col1, col2, col3 = st.columns(3)
 
-    elif page == 'Gesture Control Page':
-        run = st.button('Start Web Camera')
+        with col1:
+            st.markdown('<div class="feature-box">', unsafe_allow_html=True)
+            st.markdown("### 👋 Gesture Control")
+            st.markdown("""
+            - Media control via hand gestures  
+            - Real-time detection  
+            - Volume & playback control  
+            """)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        FRAME_WINDOW1 = st.image([])
-        FRAME_WINDOW2 = st.image([])
+        with col2:
+            st.markdown('<div class="feature-box">', unsafe_allow_html=True)
+            st.markdown("### 🎤 Speech to Text")
+            st.markdown("""
+            - Auto note generation  
+            - Whisper AI transcription  
+            - Real-time updates  
+            """)
+            st.markdown('</div>', unsafe_allow_html=True)
 
+        with col3:
+            st.markdown('<div class="feature-box">', unsafe_allow_html=True)
+            st.markdown("### 🎥 Video Intelligence")
+            st.markdown("""
+            - Background video processing  
+            - AI summarization  
+            - Smart notes extraction  
+            """)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("### ⚙️ Tech Stack")
+
+        st.markdown("""
+        <div class="badge">🤖 TensorFlow</div>
+        <div class="badge">📷 OpenCV</div>
+        <div class="badge">🌐 Streamlit</div>
+        <div class="badge">🎙️ Whisper</div>
+        """, unsafe_allow_html=True)
+
+        # elif page == '🎬 Project Demo':
+
+        #     st.markdown('<div class="card">', unsafe_allow_html=True)
+        #     st.markdown("### 🎬 Demo Preview")
+        #     st.video("demo.mp4")
+        #     st.markdown('</div>', unsafe_allow_html=True)
+
+    elif page == '🖐️ Gesture Control':
+        st.markdown("### 🖐️ Gesture Control Panel")
+        col1, col2 = st.columns([2,1])
+
+        with col1:
+            run = st.button('▶ Start Camera')
+
+            FRAME_WINDOW1 = st.image([])
+            FRAME_WINDOW2 = st.image([])
+
+        with col2:
+            st.markdown("### 📋 Gesture Legend")
+            st.markdown("""
+            - 🖐️ Palm → Play/Pause  
+            - ✊ Fist → Mute  
+            - 👍 Thumbs Up → Volume +  
+            - 👎 Thumbs Down → Volume -  
+            - ☝️ Index Right → Next  
+            - ☝️ Index Left → Previous  
+            """)
+            
         camera = cv2.VideoCapture(0)
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, 400)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 400)
@@ -192,28 +352,40 @@ def main():
         camera.release()
         cv2.destroyAllWindows()
     
-    elif page == 'Notes Taking':
-        global recording, notes_text
-        st.subheader("🎤 Speech-to-Text Notes")
+    elif page == '📝 Notes Taking':
+
+        st.markdown('<div class="gradient-purple">🎤 Speech-to-Text Notes</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="card">', unsafe_allow_html=True)
 
         col1, col2 = st.columns(2)
 
-        if col1.button("Start Recording"):
-            recording = True
-            notes_text = ""
-            open("notes.txt", "w").close()
+        # ▶ START
+        if col1.button("▶ Start Recording"):
+            if not st.session_state.get("recording", False):
+                st.session_state["recording"] = True   # ✅ FIXED
+                st.session_state["notes_text"] = ""
+                open("notes.txt", "w").close()
 
-            thread = threading.Thread(target=record_with_whisper)
-            thread.start()
+                thread = threading.Thread(target=record_with_whisper, daemon=True)
+                thread.start()
 
-        if col2.button("Stop Recording"):
-            recording = False
+        # ⏹ STOP
+        if col2.button("⏹ Stop Recording"):
+            st.session_state["recording"] = False   # ✅ FIXED
 
-        st.text_area("Live Notes", notes_text, height=300)
+        # 🔴 STATUS
+        if st.session_state.get("recording", False):
+            st.success("🔴 Recording in progress...")
+        else:
+            st.info("⚪ Idle")
 
-        if st.button("Clear Notes"):
-            notes_text = ""
-            open("notes.txt", "w").close()
+        # 📄 INFO
+        st.info("📄 Notes are being saved automatically to 'notes.txt' in your project folder.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.divider()
 
 if __name__ == "__main__":
     main()
